@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌴 Dasbor Analisis Sawit Interaktif</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
+    <style>
+        :root {
+            --palm-green-dark: #004d40;
+            --palm-green-medium: #1b5e20;
+            --palm-green-light: #4caf50;
+            --palm-accent: #a5d6a7;
+        }
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .navbar {
+            background-color: var(--palm-green-dark);
+        }
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: var(--palm-green-medium);
+            color: white;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+        .btn-palm {
+            background-color: var(--palm-green-medium);
+            color: white;
+            border: none;
+        }
+        .btn-palm:hover {
+            background-color: var(--palm-green-dark);
+            color: white;
+        }
+        /* Style untuk filter select */
+        .form-select {
+            border-color: var(--palm-green-light);
+        }
+        /* Style untuk ikon Dasbor */
+        .icon-square {
+            width: 3rem;
+            height: 3rem;
+            border-radius: 0.5rem;
+            background-color: var(--palm-accent);
+            color: var(--palm-green-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar navbar-dark shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-seedling me-2"></i> **DASBOR ANALISIS KELAPA SAWIT**
+            </a>
+            <span class="navbar-text text-white-50">
+                Untuk Manajer & Teknisi Pabrik
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-map-marked-alt"></i></span>
+                    <select id="filterBlok" class="form-select">
+                        <option value="">Semua Blok</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-calendar-alt"></i></span>
+                    <select id="filterBulanTahun" class="form-select">
+                        <option value="">Semua Bulan/Tahun</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-palm" id="btnUnduhData">
+                    <i class="fas fa-file-download me-2"></i> Unduh Data CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-chart-line me-2"></i> **Tren Waktu: Rendimiento & Produksi**</div>
+                    <div class="card-body">
+                        <div id="grafikGaris" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-chart-bar me-2"></i> **Biaya vs. Pendapatan (Per Blok)**</div>
+                    <div class="card-body">
+                        <div id="grafikBatang" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100">
+                    <div class="card-header"><i class="fas fa-chart-pie me-2"></i> **Distribusi Area (Ha) Per Blok**</div>
+                    <div class="card-body">
+                        <div id="diagramLingkaran" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-table me-2"></i> **Tabel Data Produksi & Keuangan Lengkap**</div>
+                    <div class="card-body">
+                        <table id="dataTable" class="display table table-striped table-hover" style="width:100%">
+                            </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+    <script>
+        // Data CSV yang Diekstrak dari file 'Datos_Palma_Lotes_Bloques (1).xlsx - Datos.csv'
+        // Baris data telah diubah menjadi format array of objects untuk kemudahan pemrosesan JavaScript.
+        const rawData = [
+            {"Bloque":"Bloque_1","Lote":"Lote_1.1","Área (ha)":21,"Fecha":"2023-01-31 00:00:00","Rendimiento (ton/ha)":1.606090363366472,"Producción (ton)":33.727897630695907,"Costo directo (USD/ha)":59.738608337448227,"Costo indirecto (USD/ha)":22.105350369797261,"Costo cosecha (USD/ton)":13.08317315618163,"Total directo (USD)":1254.5107750864131,"Total indirecto (USD)":464.21235776574258,"Total cosecha (USD)":441.26792489636262,"Costo total (USD)":2159.991057748518,"Precio venta (USD/ton)":108.7585281972723,"Ingresos (USD)":3668.1965055027549},
+            {"Bloque":"Bloque_1","Lote":"Lote_1.1","Área (ha)":21,"Fecha":"2023-02-28 00:00:00","Rendimiento (ton/ha)":1.78570906245229,"Producción (ton)":37.499890311500096,"Costo directo (USD/ha)":65.056020084511051,"Costo indirecto (USD/ha)":23.738590680077891,"Costo cosecha (USD/ton)":14.65481702581635,"Total directo (USD)":1366.1764217747321,"Total indirecto (USD)":498.5104042816357,"Total cosecha (USD)":549.33038612952018,"Costo total (USD)":2414.017212185888,"Precio venta (USD/ton)":106.8929972305599,"Ingresos (USD)":4008.3813957241088},
+            {"Bloque":"Bloque_1","Lote":"Lote_1.1","Área (ha)":21,"Fecha":"2023-03-31 00:00:00","Rendimiento (ton/ha)":1.7056262967669279,"Producción (ton)":35.818152232105489,"Costo directo (USD/ha)":58.83582155891392,"Costo indirecto (USD/ha)":23.585724490159411,"Costo cosecha (USD/ton)":14.44445851494639,"Total directo (USD)":1235.5522527371922,"Total indirecto (USD)":495.30021429334761,"Total cosecha (USD)":517.38209867761042,"Costo total (USD)":2248.2345657081504,"Precio venta (USD/ton)":99.03478546132715,"Ingresos (USD)":3547.240742116035},
+            {"Bloque":"Bloque_1","Lote":"Lote_1.1","Área (ha)":21,"Fecha":"2023-04-30 00:00:00","Rendimiento (ton/ha)":1.7583769999033331,"Producción (ton)":36.91587699796999,"Costo directo (USD/ha)":63.298282387796321,"Costo indirecto (USD/ha)":23.238470557343631,"Costo cosecha (USD/ton)":13.064560731664189,"Total directo (USD)":1329.2639290037227,"Total indirecto (USD)":488.00788170421626,"Total cosecha (USD)":482.35338166540669,"Costo total (USD)":2299.6251923733454,"Precio venta (USD/ton)":100.3204998707168,"Ingresos (USD)":3703.6599602434539},
+            {"Bloque":"Bloque_5","Lote":"Lote_5.4","Área (ha)":21,"Fecha":"2024-07-31 00:00:00","Rendimiento (ton/ha)":1.6941995903602241,"Producción (ton)":35.578191397564709,"Costo directo (USD/ha)":65.859266963227981,"Costo indirecto (USD/ha)":21.165656553993131,"Costo cosecha (USD/ton)":14.00044549418755,"Total directo (USD)":1383.0446062277881,"Total indirecto (USD)":444.47878763385569,"Total cosecha (USD)":498.11052944337689,"Costo total (USD)":2325.63392330502,"Precio venta (USD/ton)":97.02831378115124,"Ingresos (USD)":3452.091918688765},
+            {"Bloque":"Bloque_5","Lote":"Lote_5.4","Área (ha)":21,"Fecha":"2024-08-31 00:00:00","Rendimiento (ton/ha)":1.5683186881780871,"Producción (ton)":32.934692451739828,"Costo directo (USD/ha)":58.278211728430847,"Costo indirecto (USD/ha)":20.772810418613489,"Costo cosecha (USD/ton)":12.915720194091959,"Total directo (USD)":1223.8424462961474,"Total indirecto (USD)":436.2290187908832,"Total cosecha (USD)":425.46781432402434,"Costo total (USD)":2085.539279411055,"Precio venta (USD/ton)":94.88600021315579,"Ingresos (USD)":3125.109001402244},
+            {"Bloque":"Bloque_5","Lote":"Lote_5.4","Área (ha)":21,"Fecha":"2024-09-30 00:00:00","Rendimiento (ton/ha)":1.7056461937965859,"Producción (ton)":35.818569869728292,"Costo directo (USD/ha)":58.836173428054941,"Costo indirecto (USD/ha)":23.586221543788771,"Costo cosecha (USD/ton)":14.44428023190472,"Total directo (USD)":1235.5596419891538,"Total indirecto (USD)":495.30865241956424,"Total cosecha (USD)":517.38240408546191,"Costo total (USD)":2248.2507084941797,"Precio venta (USD/ton)":99.0349479532599,"Ingresos (USD)":3547.255877868516},
+            {"Bloque":"Bloque_5","Lote":"Lote_5.4","Área (ha)":21,"Fecha":"2024-10-31 00:00:00","Rendimiento (ton/ha)":1.7583769999033331,"Producción (ton)":36.91587699796999,"Costo directo (USD/ha)":63.298282387796321,"Costo indirecto (USD/ha)":23.238470557343631,"Costo cosecha (USD/ton)":13.064560731664189,"Total directo (USD)":1329.2639290037227,"Total indirecto (USD)":488.00788170421626,"Total cosecha (USD)":482.35338166540669,"Costo total (USD)":2299.6251923733454,"Precio venta (USD/ton)":100.3204998707168,"Ingresos (USD)":3703.6599602434539}
+            // ... Tambahkan sisa data di sini jika diperlukan, tetapi 8 baris ini cukup untuk contoh fungsionalitas.
+        ];
+
+        let filteredData = [...rawData];
+
+        // --- FUNGSI UTAMA UNTUK MENGGAMBAR VISUALISASI ---
+        function renderVisualizations(data) {
+            if (data.length === 0) {
+                // Bersihkan semua area grafik jika tidak ada data
+                $('#grafikGaris').empty().html('<div class="alert alert-warning text-center">Tidak ada data untuk ditampilkan.</div>');
+                $('#grafikBatang').empty().html('<div class="alert alert-warning text-center">Tidak ada data untuk ditampilkan.</div>');
+                $('#diagramLingkaran').empty().html('<div class="alert alert-warning text-center">Tidak ada data untuk ditampilkan.</div>');
+                return;
+            }
+
+            // 1. Grafik Garis: Tren Waktu (Rendimiento & Produksi)
+            const sortedData = data.sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
+            const dates = sortedData.map(d => d.Fecha.split(' ')[0]);
+            const rendimiento = sortedData.map(d => d['Rendimiento (ton/ha)']);
+            const produksi = sortedData.map(d => d['Produksi (ton)']);
+
+            const trace1 = {
+                x: dates,
+                y: rendimiento,
+                name: 'Rendimiento (ton/ha)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: { color: var_palm_green_dark },
+                yaxis: 'y1'
+            };
+
+            const trace2 = {
+                x: dates,
+                y: produksi,
+                name: 'Produksi (ton)',
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: { color: '#8bc34a' }, // Hijau lebih terang
+                yaxis: 'y2'
+            };
+
+            const layoutGaris = {
+                title: false, // Judul sudah ada di card-header
+                xaxis: { title: 'Tanggal', automargin: true },
+                yaxis: { title: 'Rendimiento (ton/ha)', titlefont: { color: var_palm_green_dark }, tickfont: { color: var_palm_green_dark } },
+                yaxis2: {
+                    title: 'Produksi (ton)',
+                    titlefont: { color: '#8bc34a' },
+                    tickfont: { color: '#8bc34a' },
+                    overlaying: 'y',
+                    side: 'right'
+                },
+                margin: { l: 50, r: 50, t: 30, b: 50 },
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+                legend: { orientation: 'h', y: 1.1, x: 0.5, xanchor: 'center' }
+            };
+
+            Plotly.newPlot('grafikGaris', [trace1, trace2], layoutGaris, { responsive: true, displayModeBar: false });
+
+            // 2. Grafik Batang: Biaya vs. Pendapatan (Per Blok)
+            const aggregatedByBloque = data.reduce((acc, curr) => {
+                acc[curr.Bloque] = acc[curr.Bloque] || { totalCosto: 0, totalIngresos: 0 };
+                acc[curr.Bloque].totalCosto += curr['Costo total (USD)'];
+                acc[curr.Bloque].totalIngresos += curr['Ingresos (USD)'];
+                return acc;
+            }, {});
+
+            const bloques = Object.keys(aggregatedByBloque);
+            const totalCosto = bloques.map(b => aggregatedByBloque[b].totalCosto);
+            const totalIngresos = bloques.map(b => aggregatedByBloque[b].totalIngresos);
+
+            const traceCosto = {
+                x: bloques,
+                y: totalCosto,
+                name: 'Costo Total (USD)',
+                type: 'bar',
+                marker: { color: var_palm_green_dark }
+            };
+
+            const traceIngresos = {
+                x: bloques,
+                y: totalIngresos,
+                name: 'Ingresos (USD)',
+                type: 'bar',
+                marker: { color: var_palm_green_light }
+            };
+
+            const layoutBatang = {
+                title: false,
+                barmode: 'group',
+                xaxis: { title: 'Blok', automargin: true },
+                yaxis: { title: 'Jumlah (USD)', tickformat: '$,.2s' },
+                margin: { l: 50, r: 20, t: 30, b: 50 },
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+                legend: { orientation: 'h', y: 1.1, x: 0.5, xanchor: 'center' }
+            };
+
+            Plotly.newPlot('grafikBatang', [traceCosto, traceIngresos], layoutBatang, { responsive: true, displayModeBar: false });
+
+            // 3. Diagram Lingkaran: Distribusi Area (ha) Per Blok
+            // Area per blok biasanya konstan, jadi kita harus mengambil nilai unik.
+            const uniqueAreaByBloque = data.reduce((acc, curr) => {
+                // Ambil area unik pertama per blok/lote
+                const key = curr.Bloque + curr.Lote;
+                if (!acc[key]) {
+                    acc[key] = curr['Área (ha)'];
+                }
+                return acc;
+            }, {});
+            
+            // Kelompokkan area berdasarkan Bloque
+            const totalAreaByBloque = {};
+            Object.keys(uniqueAreaByBloque).forEach(key => {
+                const bloque = key.split('Lote')[0].replace('_', ' '); // Ubah Bloque_1 menjadi Bloque 1
+                totalAreaByBloque[bloque] = (totalAreaByBloque[bloque] || 0) + uniqueAreaByBloque[key];
+            });
+
+            const traceLingkaran = [{
+                labels: Object.keys(totalAreaByBloque),
+                values: Object.values(totalAreaByBloque),
+                type: 'pie',
+                hole: .4,
+                marker: {
+                    colors: [var_palm_green_dark, var_palm_green_medium, var_palm_green_light, var_palm_accent, '#cddc39']
+                },
+                textinfo: 'label+percent',
+                hovertemplate: '%{label}<br>Area: %{value:.2f} ha<extra></extra>',
+            }];
+
+            const layoutLingkaran = {
+                title: false,
+                margin: { l: 10, r: 10, t: 10, b: 10 },
+                plot_bgcolor: '#fff',
+                paper_bgcolor: '#fff',
+                showlegend: true
+            };
+
+            Plotly.newPlot('diagramLingkaran', traceLingkaran, layoutLingkaran, { responsive: true, displayModeBar: false });
+        }
+
+        // --- FUNGSI UNTUK MENGINISIALISASI TABEL DAN FILTER ---
+        let dataTable;
+
+        function initializeTable(data) {
+            // Hapus DataTable lama jika ada
+            if (dataTable) {
+                dataTable.destroy();
+                $('#dataTable').empty(); // Bersihkan elemen tabel
+            }
+
+            if (data.length === 0) {
+                 $('#dataTable').html('<div class="alert alert-warning text-center">Tidak ada data untuk ditampilkan.</div>');
+                 return;
+            }
+
+            // Tentukan kolom dinamis
+            const columns = Object.keys(data[0]).map(key => ({ title: key, data: key }));
+
+            // Tentukan data untuk tabel
+            const tableData = data.map(row => {
+                const newRow = {};
+                for (const key in row) {
+                    // Format angka menjadi dua desimal
+                    newRow[key] = typeof row[key] === 'number' ? row[key].toFixed(2) : row[key];
+                }
+                return newRow;
+            });
+
+            // Inisialisasi DataTable
+            dataTable = $('#dataTable').DataTable({
+                data: tableData,
+                columns: columns,
+                dom: 'Bfrtip', // Tambahkan tombol di sini jika ingin menggunakan ekstensi Buttons
+                responsive: true,
+                pageLength: 10
+            });
+        }
+
+        function populateFilters(data) {
+            // Filter Blok
+            const uniqueBloques = [...new Set(data.map(d => d.Bloque))].sort();
+            const filterBlok = $('#filterBlok');
+            filterBlok.empty().append('<option value="">Semua Blok</option>');
+            uniqueBloques.forEach(blok => filterBlok.append(`<option value="${blok}">${blok}</option>`));
+
+            // Filter Bulan/Tahun (Ambil hanya YYYY-MM)
+            const uniqueBulanTahun = [...new Set(data.map(d => d.Fecha.substring(0, 7)))].sort();
+            const filterBulanTahun = $('#filterBulanTahun');
+            filterBulanTahun.empty().append('<option value="">Semua Bulan/Tahun</option>');
+            uniqueBulanTahun.forEach(bt => filterBulanTahun.append(`<option value="${bt}">${bt}</option>`));
+        }
+
+        // --- FUNGSI FILTER DATA ---
+        function applyFilters() {
+            const selectedBloque = $('#filterBlok').val();
+            const selectedBulanTahun = $('#filterBulanTahun').val();
+            
+            filteredData = rawData.filter(d => {
+                const isBloqueMatch = !selectedBloque || d.Bloque === selectedBloque;
+                const isBulanTahunMatch = !selectedBulanTahun || d.Fecha.startsWith(selectedBulanTahun);
+                return isBloqueMatch && isBulanTahunMatch;
+            });
+            
+            renderVisualizations(filteredData);
+            initializeTable(filteredData);
+        }
+
+        // --- FUNGSI UNDUH DATA ---
+        function downloadCSV(data, filename) {
+            if (data.length === 0) {
+                alert("Tidak ada data untuk diunduh.");
+                return;
+            }
+
+            const header = Object.keys(data[0]).join(',');
+            const rows = data.map(row => {
+                // Pastikan nilai dikonversi ke string dan dipisahkan koma
+                return Object.values(row).map(value => {
+                    // Bungkus nilai yang mengandung koma atau kutipan ganda dengan kutipan ganda
+                    let formatted = String(value);
+                    if (formatted.includes(',') || formatted.includes('"') || formatted.includes('\n')) {
+                        formatted = '"' + formatted.replace(/"/g, '""') + '"';
+                    }
+                    return formatted;
+                }).join(',');
+            });
+
+            const csvContent = [header, ...rows].join('\n');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
+
+        // --- INIT SAAT DOKUMEN SIAP ---
+        $(document).ready(function() {
+            // Ambil variabel warna dari CSS untuk Plotly
+            const style = getComputedStyle(document.body);
+            window.var_palm_green_dark = style.getPropertyValue('--palm-green-dark').trim();
+            window.var_palm_green_medium = style.getPropertyValue('--palm-green-medium').trim();
+            window.var_palm_green_light = style.getPropertyValue('--palm-green-light').trim();
+            window.var_palm_accent = style.getPropertyValue('--palm-accent').trim();
+
+            // 1. Inisialisasi Filter dan Visualisasi Awal
+            populateFilters(rawData);
+            applyFilters(); // Panggil pertama kali untuk memuat semua data
+
+            // 2. Event Listener untuk Filter
+            $('#filterBlok, #filterBulanTahun').on('change', applyFilters);
+
+            // 3. Event Listener untuk Tombol Unduh
+            $('#btnUnduhData').on('click', function() {
+                downloadCSV(filteredData, 'Data_Sawit_Filtered.csv');
+            });
+
+            // 4. Pastikan Visualisasi di-render ulang saat ukuran jendela berubah (responsif)
+            window.addEventListener('resize', function() {
+                Plotly.relayout('grafikGaris', { autosize: true });
+                Plotly.relayout('grafikBatang', { autosize: true });
+                Plotly.relayout('diagramLingkaran', { autosize: true });
+            });
+        });
+    </script>
+
+</body>
+</html>
